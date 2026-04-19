@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let's Travel Back in Time</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --success: #2ecc71;
+            --error: #e74c3c;
+            --gold: #f1c40f;
+            --dark: #2c3e50;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            overflow: hidden; font-family: 'Arial Black', sans-serif;
+            background: url('background.gif') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        /* --- Full Screen GIF Introduction --- */
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            /* This sets your gif as the full background of the start screen */
+            background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('Travel Back in Time.gif') no-repeat center center;
+            background-size: cover;
+            z-index: 9000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 20px;
+            transition: opacity 0.5s ease;
+        }
+
+        #start-screen h1 { 
+            color: white; 
+            font-size: 4.5rem; 
+            margin: 0; 
+            text-shadow: 4px 4px 10px rgba(0,0,0,0.8); 
+        }
+
+        #start-screen p { 
+            font-size: 1.5rem; 
+            color: #f0f0f0; 
+            max-width: 700px; 
+            margin: 25px 0; 
+            line-height: 1.4;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9);
+        }
+        
+        .footer-link { margin-top: 50px; font-size: 1.3rem; }
+        .footer-link a { 
+            color: var(--gold); 
+            text-decoration: none; 
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            transition: 0.3s;
+        }
+        .footer-link a:hover { color: white; text-decoration: underline; }
+
+        /* --- Main App Layout --- */
+        #app-overlay {
+            width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.65);
+            display: flex; flex-direction: column;
+        }
+
+        .header {
+            display: flex; justify-content: center; align-items: center; gap: 20px; 
+            padding: 10px; background: rgba(255,255,255,0.9);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10;
+        }
+
+        .nav-btn {
+            background: var(--primary); color: white; border: none;
+            padding: 10px 20px; border-radius: 8px; cursor: pointer;
+            font-size: 0.9rem; font-weight: bold; transition: 0.3s;
+        }
+
+        #calendar-container {
+            flex-grow: 1; display: flex; flex-direction: column;
+            padding: 10px; transition: filter 0.4s ease;
+        }
+        .calendar-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: white; padding: 5px 30px; border-radius: 15px; margin-bottom: 5px;
+            border: 2px solid var(--dark);
+        }
+        .grid {
+            flex-grow: 1; display: grid; grid-template-columns: repeat(7, 1fr);
+            grid-template-rows: auto repeat(6, 1fr); gap: 5px;
+        }
+        .weekday { background: var(--dark); color: white; text-align: center; padding: 10px; border-radius: 5px; font-size: 1rem; border: 1px solid black; }
+        .day { background: white; border: 2px solid black; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 2rem; position: relative; font-weight: bold; }
+        .day.selected { background: var(--gold); box-shadow: 0 0 15px var(--gold); transform: scale(0.95); }
+
+        #ok-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 80px; font-size: 2rem; background: var(--success); display: none; z-index: 50; border: 4px solid white; color: white; border-radius: 50px; cursor: pointer; }
+
+        #draggable-randomizer {
+            position: absolute; top: 150px; left: 20px; 
+            background: white; padding: 15px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 60;
+            width: 280px; border: 3px solid var(--dark); cursor: move;
+        }
+
+        #settings-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 2000; overflow-y: auto; padding: 20px;
+        }
+        .setting-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .setting-item { border: 1px solid #ccc; padding: 10px; border-radius: 10px; background: #f9f9f9; position: relative; }
+        .paste-box { width: 100%; height: 100px; border: 3px dashed var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; background: #fff; cursor: crosshair; }
+        .paste-box img { max-height: 100%; pointer-events: none; }
+
+        #focused-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center;
+        }
+        .focused-card { background: white; width: 95%; height: 95%; border-radius: 30px; border: 10px solid var(--gold); display: flex; flex-direction: column; align-items: center; padding: 15px; position: relative; }
+        
+        .drop-box { 
+            display: inline-block; 
+            min-width: 140px; 
+            border-bottom: 4px solid var(--dark); 
+            margin: 0 5px; 
+            height: 45px; 
+            vertical-align: bottom; 
+            text-align: center; 
+            background: transparent;
+            transition: background 0.3s;
+            pointer-events: auto;
+        }
+        .word-tile { background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px; cursor: grab; font-size: 1.1rem; user-select: none; }
+        .drag-zone { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; width: 90%; background: #f0f0f0; min-height: 60px; }
+
+        #expression-popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--primary); color: white; padding: 40px; border-radius: 30px; font-size: 4rem; text-align: center; z-index: 3000; border: 8px solid white; }
+        .focus-active #calendar-container, .focus-active .header, .focus-active #draggable-randomizer { filter: blur(15px); pointer-events: none; }
+        
+        #exit-game-btn { position: absolute; top: 20px; right: 20px; background: var(--error); padding: 10px 20px; }
+    </style>
+</head>
+<body>
+
+<div id="start-screen">
+    <h1>Let's Travel Back in Time</h1>
+    <p>Master past time expressions through fun vocabulary and grammar challenges!</p>
+    <button class="nav-btn" style="padding: 25px 90px; font-size: 2rem; background: var(--success); border-radius: 60px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);" onclick="startGame()">START GAME</button>
+    <div class="footer-link">
+        <a href="https://teacherkhenlearninghub.blogspot.com/" target="_blank">Teacher Khen Learning Hub</a>
+    </div>
+</div>
+
+<audio id="bgMusic" loop><source src="background music.mp3" type="audio/mpeg"></audio>
+<audio id="sfxClick"><source src="click.mp3" type="audio/mpeg"></audio>
+<audio id="sfxRandomizer"><source src="randomizer sound effect.mp3" type="audio/mpeg"></audio>
+<audio id="sfxCorrect"><source src="correct.mp3" type="audio/mpeg"></audio>
+
+<div id="app-overlay">
+    <div class="header">
+        <div class="music-ctrl" style="display:flex; align-items:center; gap:10px; background:#eee; padding:5px 15px; border-radius:20px;">
+            <button class="nav-btn" onclick="toggleMusic()">MUSIC: OFF</button>
+            <input type="range" min="0" max="1" step="0.1" value="0.5" onchange="setVolume(this.value)">
+        </div>
+        <button class="nav-btn" style="background:var(--dark)" onclick="openSettings()">⚙️ SETTINGS</button>
+    </div>
+
+    <div id="calendar-container">
+        <div class="calendar-header">
+            <button class="nav-btn" onclick="changeMonth(-1)">❮ MONTH</button>
+            <span id="month-display" style="font-size:1.5rem">Month</span>
+            <button class="nav-btn" onclick="changeMonth(1)">MONTH ❯</button>
+            <button class="nav-btn" onclick="changeYear(-1)">❮ YEAR</button>
+            <span id="year-display" style="font-size:1.5rem">2026</span>
+            <button class="nav-btn" onclick="changeYear(1)">YEAR ❯</button>
+        </div>
+        <div class="grid" id="calendar-grid"></div>
+    </div>
+</div>
+
+<button id="ok-btn" onclick="openBigScreen()">OK</button>
+
+<div id="draggable-randomizer">
+    <div style="background:#333; color:white; font-size:0.7rem; padding:3px; text-align:center; margin-bottom:10px;">DRAG ME</div>
+    <textarea id="exp-input-box" style="width:100%; height:60px;">last night, yesterday, now, last week, last year</textarea>
+    <button class="nav-btn" style="width:100%; margin-top:5px;" onclick="pickExpression()">PICK EXPRESSION</button>
+</div>
+
+<div id="settings-overlay">
+    <div style="display:flex; justify-content: space-between; align-items:center; padding:15px; background:#f4f4f4; border-radius:15px;">
+        <h2>Game Setup</h2>
+        <div style="display:flex; gap:10px;">
+            <button class="nav-btn" style="background:var(--error)" onclick="clearAllData()">CLEAR ALL DATA</button>
+            <button class="nav-btn" style="background:var(--dark)" onclick="saveToFile()">SAVE FILE</button>
+            <button class="nav-btn" style="background:var(--dark)" onclick="document.getElementById('fileIn').click()">LOAD FILE</button>
+            <button class="nav-btn" style="background:var(--success)" onclick="closeSettings()">CLOSE & PLAY</button>
+        </div>
+    </div>
+    <input type="file" id="fileIn" style="display:none" onchange="loadFromFile(event)">
+    <div style="padding:20px;">
+        <h3>Part 1: Time Expressions</h3>
+        <textarea id="setting-exps" style="width:100%; height:60px; font-size:1rem;"></textarea>
+        <h3>Part 2: 15 Place Items</h3>
+        <div class="setting-grid" id="places-grid"></div>
+    </div>
+</div>
+
+<div id="focused-overlay">
+    <div class="focused-card">
+        <button id="exit-game-btn" class="nav-btn" onclick="closeBigScreen()">GO BACK TO CALENDAR</button>
+        <div id="full-date-display" style="font-size:1.8rem; color:var(--dark); margin-bottom:5px;"></div>
+        <div style="display:flex; gap:15px; margin-bottom:10px;">
+            <img src="clock.gif" style="width:50px">
+            <select id="h-sel" class="time-select" style="font-size:1.5rem"></select> : 
+            <select id="m-sel" class="time-select" style="font-size:1.5rem"></select>
+            <select id="ampm-sel" class="time-select" style="font-size:1.5rem"><option>AM</option><option>PM</option></select>
+        </div>
+        <img id="game-image" style="height:180px; border:5px solid var(--primary); border-radius:15px;">
+        <h2 id="game-place-name" style="color:var(--primary); margin:5px; font-weight: normal;"></h2>
+        <div id="sentence-area" style="font-size:1.3rem; width:95%; background:#f9f9f9; padding:15px; border-radius:15px; line-height:2.5;">
+            <div id="q1-line"></div>
+            <hr>
+            <div id="q2-line"></div>
+        </div>
+        <div class="drag-zone" id="word-bank" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+        <div id="game-controls">
+            <button id="submit-btn" class="nav-btn" style="background:var(--success); padding:15px 60px; font-size:1.5rem;" onclick="checkAnswers()">SUBMIT</button>
+            <button id="back-btn" class="nav-btn" style="background:var(--dark); display:none;" onclick="closeBigScreen()">RETURN TO CALENDAR</button>
+        </div>
+    </div>
+</div>
+
+<div id="expression-popup" onclick="this.style.display='none'"></div>
+<div id="result-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:5000; background:rgba(0,0,0,0.8); justify-content:center; align-items:center;"><img id="result-gif" style="width:400px;"></div>
+
+<script>
+    let currentViewDate = new Date(2026, 3, 19);
+    let selectedDates = [];
+    let currentExp = "";
+    let gameData = Array(15).fill().map(() => ({ word: "", img: "" }));
+    let correctAnswers = {};
+    let unusedExps = [];
+
+    function startGame() {
+        const screen = document.getElementById('start-screen');
+        screen.style.opacity = '0';
+        setTimeout(() => screen.style.display = 'none', 500);
+        const m = document.getElementById('bgMusic');
+        m.play().catch(() => console.log("Music ready."));
+        document.querySelector('.music-ctrl .nav-btn').innerText = "MUSIC: ON";
+    }
+
+    // Previous scripts remain identical...
+    for(let i=1; i<=12; i++) document.getElementById('h-sel').add(new Option(i, i));
+    for(let i=0; i<60; i++) document.getElementById('m-sel').add(new Option(i.toString().padStart(2,'0'), i));
+
+    if(localStorage.getItem('calGamePlaces')) gameData = JSON.parse(localStorage.getItem('calGamePlaces'));
+    if(localStorage.getItem('calGameExps')) document.getElementById('exp-input-box').value = localStorage.getItem('calGameExps');
+
+    function playSfx(id) { const s = document.getElementById(id); if(s) { s.currentTime = 0; s.play(); } }
+
+    function openSettings() {
+        document.getElementById('setting-exps').value = document.getElementById('exp-input-box').value;
+        const grid = document.getElementById('places-grid');
+        grid.innerHTML = '';
+        gameData.forEach((item, i) => {
+            const div = document.createElement('div');
+            div.className = 'setting-item';
+            div.innerHTML = `
+                <button style="position:absolute; top:2px; right:2px; background:red; color:white; border:none; border-radius:50%; width:20px; cursor:pointer;" onclick="gameData[${i}]={word:'',img:''}; openSettings();">X</button>
+                <input type="text" placeholder="name ${i+1}" value="${item.word}" style="width:80%;" onchange="gameData[${i}].word=this.value; saveLocal();">
+                <div class="paste-box" onpaste="handlePaste(event, ${i})">${item.img ? `<img src="${item.img}">` : 'Paste Photo'}</div>
+            `;
+            grid.appendChild(div);
+        });
+        document.getElementById('settings-overlay').style.display = 'block';
+    }
+
+    function handlePaste(e, i) {
+        e.preventDefault();
+        const item = Array.from(e.clipboardData.items).find(x => x.type.indexOf("image") !== -1);
+        if (item) {
+            const reader = new FileReader();
+            reader.onload = (event) => { 
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const max_w = 400; const scale = max_w / img.width;
+                    canvas.width = max_w; canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    gameData[i].img = canvas.toDataURL('image/jpeg', 0.7);
+                    openSettings(); saveLocal();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(item.getAsFile());
+        }
+    }
+
+    function clearAllData() {
+        if(confirm("Are you sure you want to clear all data?")) {
+            gameData = Array(15).fill().map(() => ({ word: "", img: "" }));
+            document.getElementById('setting-exps').value = "";
+            saveLocal();
+            openSettings();
+        }
+    }
+
+    function saveLocal() { 
+        try {
+            localStorage.setItem('calGamePlaces', JSON.stringify(gameData));
+            localStorage.setItem('calGameExps', document.getElementById('exp-input-box').value);
+        } catch(e) { console.warn("Storage limit."); }
+        unusedExps = []; 
+    }
+
+    function closeSettings() { 
+        document.getElementById('exp-input-box').value = document.getElementById('setting-exps').value;
+        saveLocal();
+        document.getElementById('settings-overlay').style.display = 'none'; 
+    }
+
+    function pickExpression() {
+        if (unusedExps.length === 0) {
+            unusedExps = document.getElementById('exp-input-box').value.split(',').map(s => s.trim()).filter(s => s !== "");
+        }
+        if(unusedExps.length === 0) return alert("Add expressions!");
+        const idx = Math.floor(Math.random() * unusedExps.length);
+        currentExp = unusedExps.splice(idx, 1)[0];
+        const p = document.getElementById('expression-popup');
+        p.innerText = currentExp.toUpperCase();
+        p.style.display = 'block';
+        playSfx('sfxRandomizer');
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid'); grid.innerHTML = '';
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        document.getElementById('month-display').innerText = months[currentViewDate.getMonth()];
+        document.getElementById('year-display').innerText = currentViewDate.getFullYear();
+        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(d => {
+            const div = document.createElement('div'); div.className = 'weekday'; div.innerText = d; grid.appendChild(div);
+        });
+        const first = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth(), 1).getDay();
+        const daysInMonth = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 0).getDate();
+        for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
+        for(let d=1; d<=daysInMonth; d++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'day';
+            const dateID = `${currentViewDate.getFullYear()}-${currentViewDate.getMonth()}-${d}`;
+            if(selectedDates.includes(dateID)) dayDiv.classList.add('selected');
+            dayDiv.innerHTML = `<span>${d}</span>`;
+            dayDiv.onclick = () => {
+                playSfx('sfxClick');
+                if(selectedDates.includes(dateID)) selectedDates = selectedDates.filter(x => x !== dateID);
+                else selectedDates.push(dateID);
+                renderCalendar();
+                document.getElementById('ok-btn').style.display = selectedDates.length > 0 ? 'block' : 'none';
+            };
+            grid.appendChild(dayDiv);
+        }
+    }
+
+    function openBigScreen() {
+        const valid = gameData.filter(p => p.word !== "");
+        if(valid.length === 0) return alert("Add places!");
+        const place = valid[Math.floor(Math.random()*valid.length)];
+        document.body.classList.add('focus-active');
+        document.getElementById('focused-overlay').style.display = 'flex';
+        document.getElementById('submit-btn').style.display = 'block';
+        document.getElementById('back-btn').style.display = 'none';
+        const dObj = new Date(selectedDates[0].split('-')[0], selectedDates[0].split('-')[1], selectedDates[0].split('-')[2]);
+        document.getElementById('full-date-display').innerText = dObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        setupGame(place);
+    }
+
+    function setupGame(item) {
+        document.getElementById('game-image').src = item.img || "";
+        document.getElementById('game-place-name').innerText = item.word;
+
+        const isNow = currentExp.toLowerCase() === "now";
+        const isSpecific = item.word.charAt(0) === item.word.charAt(0).toUpperCase() && isNaN(item.word.charAt(0));
+        const article = isSpecific ? "" : "the ";
+        
+        const q1Line = document.getElementById('q1-line');
+        q1Line.innerHTML = `Where <div class="drop-box" id="drop-v1" ondrop="drop(event)" ondragover="allowDrop(event)"></div> you <div class="drop-box" id="drop-exp1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>? <br> I <div class="drop-box" id="drop-v2" ondrop="drop(event)" ondragover="allowDrop(event)"></div> at ${article}<div class="drop-box" id="drop-place1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>.`;
+
+        const isCorrect = Math.random() > 0.5;
+        const otherPlaces = gameData.filter(p => p.word !== "" && p.word !== item.word);
+        const decoyPlace = otherPlaces.length > 0 ? otherPlaces[Math.floor(Math.random()*otherPlaces.length)].word : "bakery";
+        const askWhere = isCorrect ? item.word : decoyPlace;
+        const decoySpecific = askWhere.charAt(0) === askWhere.charAt(0).toUpperCase() && isNaN(askWhere.charAt(0));
+        const decoyArticle = decoySpecific ? "" : "the ";
+
+        let optionYes, optionNo, yesNoAns;
+
+        if(isNow) {
+            optionYes = "Yes, I am.";
+            optionNo = `No, I'm not. I'm at ${article}${item.word}.`;
+            yesNoAns = isCorrect ? optionYes : optionNo;
+            document.getElementById('q2-line').innerHTML = `Are you at ${decoyArticle}${askWhere} ${currentExp}? <div class="drop-box" id="drop-yn" style="width:450px" ondrop="drop(event)" ondragover="allowDrop(event)"></div>`;
+            correctAnswers = { v1: "are", exp1: currentExp, v2: "am", place1: item.word, yn: yesNoAns };
+        } else {
+            optionYes = "Yes, I was.";
+            optionNo = isCorrect ? `No, I wasn't. I was at ${decoyArticle}${decoyPlace}.` : `No, I wasn't. I was at ${article}${item.word}.`;
+            yesNoAns = isCorrect ? optionYes : optionNo;
+            document.getElementById('q2-line').innerHTML = `Were you at ${decoyArticle}${askWhere} ${currentExp}? <div class="drop-box" id="drop-yn" style="width:450px" ondrop="drop(event)" ondragover="allowDrop(event)"></div>`;
+            correctAnswers = { v1: "were", exp1: currentExp, v2: "was", place1: item.word, yn: yesNoAns };
+        }
+
+        const words = isNow ? ["are", "am", "I'm not", "I'm"] : ["were", "was", "wasn't"];
+        words.push(currentExp, item.word, optionYes, optionNo, "at");
+        if(!isSpecific) words.push("the");
+
+        const bank = document.getElementById('word-bank'); bank.innerHTML = '';
+        [...new Set(words)].sort(() => Math.random() - 0.5).forEach((w, i) => {
+            const span = document.createElement('span'); 
+            span.className = 'word-tile'; span.innerText = w; span.draggable = true; span.id = "w-" + i;
+            span.ondragstart = (e) => e.dataTransfer.setData("text", e.target.id);
+            bank.appendChild(span);
+        });
+    }
+
+    function checkAnswers() {
+        const check = (id, key) => document.getElementById(id).innerText.trim() === correctAnswers[key];
+        const isOk = check('drop-v1', 'v1') && check('drop-exp1', 'exp1') && check('drop-v2', 'v2') && check('drop-place1', 'place1') && check('drop-yn', 'yn');
+        const overlay = document.getElementById('result-overlay');
+        document.getElementById('result-gif').src = isOk ? 'correct.gif' : 'wrong.gif';
+        if(isOk) playSfx('sfxCorrect'); 
+        overlay.style.display = 'flex';
+        setTimeout(() => { 
+            overlay.style.display = 'none'; 
+            if(isOk) { document.getElementById('submit-btn').style.display = 'none'; document.getElementById('back-btn').style.display = 'block'; }
+        }, 2000);
+    }
+
+    function allowDrop(ev) { ev.preventDefault(); }
+    function drop(ev) {
+        ev.preventDefault();
+        const data = ev.dataTransfer.getData("text");
+        const draggedElement = document.getElementById(data);
+        let target = ev.target;
+        if (target.classList.contains('word-tile')) target = target.parentElement; 
+        if (target.classList.contains('drop-box')) {
+            target.innerHTML = "";
+            const clone = draggedElement.cloneNode(true);
+            clone.id = "clone-" + Math.random();
+            clone.style.cursor = "default"; clone.draggable = false; 
+            target.appendChild(clone);
+            target.style.background = "rgba(74, 144, 226, 0.1)";
+        }
+    }
+
+    function closeBigScreen() { 
+        document.body.classList.remove('focus-active'); 
+        document.getElementById('focused-overlay').style.display = 'none'; 
+        selectedDates = []; 
+        document.getElementById('ok-btn').style.display = 'none'; 
+        document.querySelectorAll('.drop-box').forEach(b => { b.innerHTML = ""; b.style.background = "transparent"; });
+        renderCalendar(); 
+    }
+
+    function saveToFile() { const blob = new Blob([JSON.stringify({places:gameData,exps:document.getElementById('setting-exps').value})], {type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="game_settings.json"; a.click(); }
+    function loadFromFile(e) { const reader = new FileReader(); reader.onload=(ev)=>{ const d=JSON.parse(ev.target.result); gameData=d.places; document.getElementById('setting-exps').value=d.exps; saveLocal(); openSettings(); }; reader.readAsText(e.target.files[0]); }
+    
+    const drag = document.getElementById("draggable-randomizer");
+    let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
+    drag.addEventListener("mousedown", (e) => { if(e.target.tagName !== "TEXTAREA" && e.target.tagName !== "BUTTON") { active = true; initialX = e.clientX - xOffset; initialY = e.clientY - yOffset; } });
+    document.addEventListener("mousemove", (e) => { if (active) { currentX = e.clientX - initialX; currentY = e.clientY - initialY; xOffset = currentX; yOffset = currentY; drag.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`; } });
+    document.addEventListener("mouseup", () => active = false);
+
+    function toggleMusic() { 
+        const m = document.getElementById('bgMusic'); 
+        const btn = document.querySelector('.music-ctrl .nav-btn'); 
+        if(m.paused) { m.play(); btn.innerText = "MUSIC: ON"; } 
+        else { m.pause(); btn.innerText = "MUSIC: OFF"; } 
+    }
+    function setVolume(v) { document.getElementById('bgMusic').volume = v; }
+    function changeMonth(d) { currentViewDate.setMonth(currentViewDate.getMonth() + d); renderCalendar(); }
+    function changeYear(d) { currentViewDate.setFullYear(currentViewDate.getFullYear() + d); renderCalendar(); }
+    window.onload = renderCalendar;
+</script>
+</body>
+</html>
