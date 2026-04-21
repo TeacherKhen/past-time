@@ -64,7 +64,7 @@
         }
 
         .header {
-            display: flex; justify-content: center; align-items: center; gap: 20px; 
+            display: flex; justify-content: center; align-items: center; gap: 15px; 
             padding: 10px; background: rgba(255,255,255,0.9);
             box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 10;
         }
@@ -98,7 +98,7 @@
             grid-template-rows: auto repeat(6, 1fr); gap: 5px;
             position: relative; z-index: 2;
         }
-        .weekday { background: var(--dark); color: white; text-align: center; padding: 10px; border-radius: 5px; font-size: 1rem; border: 1px solid black; }
+        .weekday { background: var(--dark); color: white; text-align: center; padding: 10px; border-radius: 5px; font-size: 0.85rem; border: 1px solid black; }
         .day { background: white; border: 2px solid black; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 2rem; position: relative; font-weight: bold; }
         .day.selected { background: var(--gold); box-shadow: 0 0 15px var(--gold); transform: scale(0.95); }
 
@@ -109,6 +109,7 @@
             position: absolute; background: white; padding: 15px; border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 60;
             border: 3px solid var(--dark); cursor: grab; touch-action: none;
+            display: none; /* Initially hidden, toggled by widget buttons */
         }
         .draggable-widget:active { cursor: grabbing; }
         .widget-handle { background:#333; color:white; font-size:0.7rem; padding:3px; text-align:center; margin-bottom:10px; border-radius: 5px; pointer-events: none;}
@@ -170,6 +171,9 @@
             <button class="nav-btn" onclick="toggleMusic()">MUSIC: OFF</button>
             <input type="range" min="0" max="1" step="0.1" value="0.5" onchange="setVolume(this.value)">
         </div>
+        <button class="nav-btn" style="background:#8e44ad" onclick="toggleWidget('draggable-randomizer')">⏱️</button>
+        <button class="nav-btn" style="background:#f39c12" onclick="toggleWidget('pen-widget')">✏️</button>
+        
         <button class="nav-btn" style="background:var(--dark)" onclick="openSettings()">⚙️ SETTINGS</button>
     </div>
 
@@ -276,6 +280,12 @@
         resizeCanvas();
     }
 
+    function toggleWidget(id) {
+        const el = document.getElementById(id);
+        el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        playSfx('sfxClick');
+    }
+
     function resizeCanvas() {
         const container = document.getElementById('calendar-container');
         canvas.width = container.offsetWidth; canvas.height = container.offsetHeight;
@@ -326,9 +336,6 @@
     if(localStorage.getItem('calGameExps')) {
         document.getElementById('exp-input-box').value = localStorage.getItem('calGameExps');
         document.getElementById('setting-exps').value = localStorage.getItem('calGameExps');
-    } else {
-        // Fallback to default if no local storage
-        document.getElementById('setting-exps').value = document.getElementById('exp-input-box').value;
     }
 
     function playSfx(id) { const s = document.getElementById(id); if(s) { s.currentTime = 0; s.play(); } }
@@ -421,9 +428,12 @@
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         document.getElementById('month-display').innerText = months[currentViewDate.getMonth()];
         document.getElementById('year-display').innerText = currentViewDate.getFullYear();
-        ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(d => {
+        
+        const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        daysOfWeek.forEach(d => {
             const div = document.createElement('div'); div.className = 'weekday'; div.innerText = d; grid.appendChild(div);
         });
+
         const first = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth(), 1).getDay();
         const daysInMonth = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 0).getDate();
         for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
@@ -487,7 +497,6 @@
         });
     }
 
-    // Touch Word Drags
     let touchDraggingElement = null, touchClone = null;
     function handleTouchStart(e) { touchDraggingElement = e.target; touchClone = touchDraggingElement.cloneNode(true); touchClone.style.position = "fixed"; touchClone.style.zIndex = "1000"; touchClone.style.opacity = "0.8"; touchClone.style.pointerEvents = "none"; document.body.appendChild(touchClone); moveAt(e.touches[0].pageX, e.touches[0].pageY); }
     function handleTouchMove(e) { if (!touchClone) return; e.preventDefault(); moveAt(e.touches[0].pageX, e.touches[0].pageY); }
@@ -510,7 +519,6 @@
     }
     function closeBigScreen() { document.body.classList.remove('focus-active'); document.getElementById('focused-overlay').style.display = 'none'; selectedDates = []; document.getElementById('ok-btn').style.display = 'none'; document.querySelectorAll('.drop-box').forEach(b => { b.innerHTML = ""; b.style.background = "transparent"; }); renderCalendar(); }
 
-    // UNIVERSAL WIDGET DRAG LOGIC
     function makeWidgetDraggable(el) {
         let active = false, currentX = 0, currentY = 0, initialX, initialY, xOffset = 0, yOffset = 0;
         function dragStart(e) {
