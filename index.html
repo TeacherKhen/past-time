@@ -23,7 +23,6 @@
         /* --- Full Screen GIF Introduction --- */
         #start-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            /* This sets your gif as the full background of the start screen */
             background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('Travel Back in Time.gif') no-repeat center center;
             background-size: cover;
             z-index: 9000;
@@ -58,7 +57,6 @@
         }
         .footer-link a:hover { color: white; text-decoration: underline; }
 
-        /* --- Main App Layout --- */
         #app-overlay {
             width: 100%; height: 100%;
             background: rgba(255, 255, 255, 0.65);
@@ -80,15 +78,25 @@
         #calendar-container {
             flex-grow: 1; display: flex; flex-direction: column;
             padding: 10px; transition: filter 0.4s ease;
+            position: relative;
         }
+        
+        #drawing-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 5; pointer-events: none;
+        }
+        #drawing-canvas.active { pointer-events: auto; cursor: crosshair; }
+
         .calendar-header {
             display: flex; justify-content: space-between; align-items: center;
             background: white; padding: 5px 30px; border-radius: 15px; margin-bottom: 5px;
-            border: 2px solid var(--dark);
+            border: 2px solid var(--dark); position: relative; z-index: 15;
         }
         .grid {
             flex-grow: 1; display: grid; grid-template-columns: repeat(7, 1fr);
             grid-template-rows: auto repeat(6, 1fr); gap: 5px;
+            position: relative; z-index: 2;
         }
         .weekday { background: var(--dark); color: white; text-align: center; padding: 10px; border-radius: 5px; font-size: 1rem; border: 1px solid black; }
         .day { background: white; border: 2px solid black; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 2rem; position: relative; font-weight: bold; }
@@ -96,13 +104,20 @@
 
         #ok-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 80px; font-size: 2rem; background: var(--success); display: none; z-index: 50; border: 4px solid white; color: white; border-radius: 50px; cursor: pointer; }
 
-        #draggable-randomizer {
-            position: absolute; top: 150px; left: 20px; 
-            background: white; padding: 15px; border-radius: 15px;
+        /* Draggable Widget Styling */
+        .draggable-widget {
+            position: absolute; background: white; padding: 15px; border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 60;
-            width: 280px; border: 3px solid var(--dark); cursor: move;
-            touch-action: none; /* Prevents screen shaking/scrolling on mobile while dragging */
+            border: 3px solid var(--dark); cursor: grab; touch-action: none;
         }
+        .draggable-widget:active { cursor: grabbing; }
+        .widget-handle { background:#333; color:white; font-size:0.7rem; padding:3px; text-align:center; margin-bottom:10px; border-radius: 5px; pointer-events: none;}
+
+        #pen-widget { top: 150px; right: 20px; width: 120px; }
+        #draggable-randomizer { top: 150px; left: 20px; width: 280px; }
+
+        .color-dot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid #ddd; display: inline-block; }
+        .color-dot.active { border-color: black; transform: scale(1.1); }
 
         #settings-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -120,22 +135,15 @@
         .focused-card { background: white; width: 95%; height: 95%; border-radius: 30px; border: 10px solid var(--gold); display: flex; flex-direction: column; align-items: center; padding: 15px; position: relative; }
         
         .drop-box { 
-            display: inline-block; 
-            min-width: 140px; 
-            border-bottom: 4px solid var(--dark); 
-            margin: 0 5px; 
-            height: 45px; 
-            vertical-align: bottom; 
-            text-align: center; 
-            background: transparent;
-            transition: background 0.3s;
-            pointer-events: auto;
+            display: inline-block; min-width: 140px; border-bottom: 4px solid var(--dark); 
+            margin: 0 5px; height: 45px; vertical-align: bottom; text-align: center; 
+            background: transparent; transition: background 0.3s; pointer-events: auto;
         }
-        .word-tile { background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px; cursor: grab; font-size: 1.1rem; user-select: none; }
+        .word-tile { background: var(--primary); color: white; padding: 8px 15px; border-radius: 8px; cursor: grab; font-size: 1.1rem; user-select: none; touch-action: none; }
         .drag-zone { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px; padding: 15px; border: 2px solid #ddd; border-radius: 10px; width: 90%; background: #f0f0f0; min-height: 60px; }
 
         #expression-popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--primary); color: white; padding: 40px; border-radius: 30px; font-size: 4rem; text-align: center; z-index: 3000; border: 8px solid white; }
-        .focus-active #calendar-container, .focus-active .header, .focus-active #draggable-randomizer { filter: blur(15px); pointer-events: none; }
+        .focus-active #calendar-container, .focus-active .header, .focus-active #draggable-randomizer, .focus-active #pen-widget { filter: blur(15px); pointer-events: none; }
         
         #exit-game-btn { position: absolute; top: 20px; right: 20px; background: var(--error); padding: 10px 20px; }
     </style>
@@ -166,6 +174,7 @@
     </div>
 
     <div id="calendar-container">
+        <canvas id="drawing-canvas"></canvas>
         <div class="calendar-header">
             <button class="nav-btn" onclick="changeMonth(-1)">❮ MONTH</button>
             <span id="month-display" style="font-size:1.5rem">Month</span>
@@ -180,8 +189,20 @@
 
 <button id="ok-btn" onclick="openBigScreen()">OK</button>
 
-<div id="draggable-randomizer">
-    <div style="background:#333; color:white; font-size:0.7rem; padding:3px; text-align:center; margin-bottom:10px;">DRAG ME</div>
+<div id="pen-widget" class="draggable-widget">
+    <div class="widget-handle">MOVE PEN</div>
+    <button id="pen-toggle" class="nav-btn" style="background:#555; width:100%; margin-bottom:10px;" onclick="toggleDrawingMode()">✏️ OFF</button>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; margin-bottom:10px;">
+        <div class="color-dot active" style="background:red" onclick="setPenColor('red', this)"></div>
+        <div class="color-dot" style="background:blue" onclick="setPenColor('blue', this)"></div>
+        <div class="color-dot" style="background:yellow" onclick="setPenColor('rgba(255,255,0,0.5)', this)"></div>
+        <div class="color-dot" style="background:black" onclick="setPenColor('black', this)"></div>
+    </div>
+    <button class="nav-btn" style="background:var(--error); font-size:0.7rem; width:100%;" onclick="clearCanvas()">ERASE ALL</button>
+</div>
+
+<div id="draggable-randomizer" class="draggable-widget">
+    <div class="widget-handle">MOVE RANDOMIZER</div>
     <textarea id="exp-input-box" style="width:100%; height:60px;">last night, yesterday, now, last week, last year</textarea>
     <button class="nav-btn" style="width:100%; margin-top:5px;" onclick="pickExpression()">PICK EXPRESSION</button>
 </div>
@@ -222,7 +243,7 @@
             <hr>
             <div id="q2-line"></div>
         </div>
-        <div class="drag-zone" id="word-bank" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+        <div class="drag-zone" id="word-bank"></div>
         <div id="game-controls">
             <button id="submit-btn" class="nav-btn" style="background:var(--success); padding:15px 60px; font-size:1.5rem;" onclick="checkAnswers()">SUBMIT</button>
             <button id="back-btn" class="nav-btn" style="background:var(--dark); display:none;" onclick="closeBigScreen()">RETURN TO CALENDAR</button>
@@ -241,96 +262,156 @@
     let correctAnswers = {};
     let unusedExps = [];
 
+    // Drawing State
+    let isDrawingEnabled = false, isDrawing = false, penColor = 'red';
+    const canvas = document.getElementById('drawing-canvas');
+    const ctx = canvas.getContext('2d');
+
     function startGame() {
         const screen = document.getElementById('start-screen');
         screen.style.opacity = '0';
         setTimeout(() => screen.style.display = 'none', 500);
-        const m = document.getElementById('bgMusic');
-        m.play().catch(() => console.log("Music ready."));
+        document.getElementById('bgMusic').play().catch(() => {});
         document.querySelector('.music-ctrl .nav-btn').innerText = "MUSIC: ON";
+        resizeCanvas();
     }
 
+    function resizeCanvas() {
+        const container = document.getElementById('calendar-container');
+        canvas.width = container.offsetWidth; canvas.height = container.offsetHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function toggleDrawingMode() {
+        isDrawingEnabled = !isDrawingEnabled;
+        canvas.classList.toggle('active', isDrawingEnabled);
+        document.getElementById('pen-toggle').innerText = isDrawingEnabled ? "✏️ ON" : "✏️ OFF";
+        document.getElementById('pen-toggle').style.background = isDrawingEnabled ? "var(--success)" : "#555";
+    }
+
+    function setPenColor(c, el) {
+        penColor = c;
+        document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+        el.classList.add('active');
+        if(!isDrawingEnabled) toggleDrawingMode();
+    }
+
+    function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function startDraw(e) { if(!isDrawingEnabled) return; isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+    function doDraw(e) {
+        if(!isDrawing || !isDrawingEnabled) return;
+        e.preventDefault(); const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y); ctx.strokeStyle = penColor;
+        ctx.lineWidth = penColor.includes('rgba') ? 20 : 4; ctx.lineCap = 'round'; ctx.stroke();
+    }
+    canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', doDraw);
+    window.addEventListener('mouseup', () => isDrawing = false);
+    canvas.addEventListener('touchstart', startDraw, {passive:false}); canvas.addEventListener('touchmove', doDraw, {passive:false});
+    canvas.addEventListener('touchend', () => isDrawing = false);
+
+    // Dynamic UI Init
     for(let i=1; i<=12; i++) document.getElementById('h-sel').add(new Option(i, i));
     for(let i=0; i<60; i++) document.getElementById('m-sel').add(new Option(i.toString().padStart(2,'0'), i));
-
+    
+    // Initial Load
     if(localStorage.getItem('calGamePlaces')) gameData = JSON.parse(localStorage.getItem('calGamePlaces'));
-    if(localStorage.getItem('calGameExps')) document.getElementById('exp-input-box').value = localStorage.getItem('calGameExps');
+    if(localStorage.getItem('calGameExps')) {
+        document.getElementById('exp-input-box').value = localStorage.getItem('calGameExps');
+        document.getElementById('setting-exps').value = localStorage.getItem('calGameExps');
+    }
 
     function playSfx(id) { const s = document.getElementById(id); if(s) { s.currentTime = 0; s.play(); } }
 
     function openSettings() {
         document.getElementById('setting-exps').value = document.getElementById('exp-input-box').value;
-        const grid = document.getElementById('places-grid');
-        grid.innerHTML = '';
+        const grid = document.getElementById('places-grid'); grid.innerHTML = '';
         gameData.forEach((item, i) => {
-            const div = document.createElement('div');
-            div.className = 'setting-item';
-            div.innerHTML = `
-                <button style="position:absolute; top:2px; right:2px; background:red; color:white; border:none; border-radius:50%; width:20px; cursor:pointer;" onclick="gameData[${i}]={word:'',img:''}; openSettings();">X</button>
+            const div = document.createElement('div'); div.className = 'setting-item';
+            div.innerHTML = `<button style="position:absolute; top:2px; right:2px; background:red; color:white; border:none; border-radius:50%; width:20px; cursor:pointer;" onclick="gameData[${i}]={word:'',img:''}; openSettings();">X</button>
                 <input type="text" placeholder="name ${i+1}" value="${item.word}" style="width:80%;" onchange="gameData[${i}].word=this.value; saveLocal();">
-                <div class="paste-box" onpaste="handlePaste(event, ${i})">${item.img ? `<img src="${item.img}">` : 'Paste Photo'}</div>
-            `;
+                <div class="paste-box" onpaste="handlePaste(event, ${i})">${item.img ? `<img src="${item.img}">` : 'Paste Photo'}</div>`;
             grid.appendChild(div);
         });
         document.getElementById('settings-overlay').style.display = 'block';
     }
 
     function handlePaste(e, i) {
-        e.preventDefault();
-        const item = Array.from(e.clipboardData.items).find(x => x.type.indexOf("image") !== -1);
+        e.preventDefault(); const item = Array.from(e.clipboardData.items).find(x => x.type.indexOf("image") !== -1);
         if (item) {
             const reader = new FileReader();
             reader.onload = (event) => { 
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const max_w = 400; const scale = max_w / img.width;
-                    canvas.width = max_w; canvas.height = img.height * scale;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    gameData[i].img = canvas.toDataURL('image/jpeg', 0.7);
-                    openSettings(); saveLocal();
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(item.getAsFile());
-        }
-    }
-
-    function clearAllData() {
-        if(confirm("Are you sure you want to clear all data?")) {
-            gameData = Array(15).fill().map(() => ({ word: "", img: "" }));
-            document.getElementById('setting-exps').value = "";
-            saveLocal();
-            openSettings();
+                const img = new Image(); img.onload = function() {
+                    const canvasProc = document.createElement('canvas'); const max_w = 400; const scale = max_w / img.width;
+                    canvasProc.width = max_w; canvasProc.height = img.height * scale;
+                    const ctxProc = canvasProc.getContext('2d'); ctxProc.drawImage(img, 0, 0, canvasProc.width, canvasProc.height);
+                    gameData[i].img = canvasProc.toDataURL('image/jpeg', 0.7); openSettings(); saveLocal();
+                }; img.src = event.target.result;
+            }; reader.readAsDataURL(item.getAsFile());
         }
     }
 
     function saveLocal() { 
-        try {
-            localStorage.setItem('calGamePlaces', JSON.stringify(gameData));
-            localStorage.setItem('calGameExps', document.getElementById('exp-input-box').value);
-        } catch(e) { console.warn("Storage limit."); }
+        try { 
+            localStorage.setItem('calGamePlaces', JSON.stringify(gameData)); 
+            localStorage.setItem('calGameExps', document.getElementById('exp-input-box').value); 
+        } catch(e) { console.error("Storage Error", e); } 
         unusedExps = []; 
     }
 
+    // FIXED: Save/Load including Time Expressions
+    function saveToFile() { 
+        const blob = new Blob([JSON.stringify({
+            places: gameData, 
+            exps: document.getElementById('setting-exps').value || document.getElementById('exp-input-box').value
+        })], {type:"application/json"}); 
+        const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="game_settings.json"; a.click(); 
+    }
+
+    function loadFromFile(e) { 
+        const reader = new FileReader(); reader.onload=(ev)=>{ 
+            try {
+                const d=JSON.parse(ev.target.result); 
+                gameData = d.places; 
+                const exps = d.exps || "";
+                document.getElementById('exp-input-box').value = exps;
+                document.getElementById('setting-exps').value = exps;
+                saveLocal(); 
+                openSettings(); 
+            } catch(err) { alert("Error loading file."); }
+        }; reader.readAsText(e.target.files[0]); 
+    }
+
+    // FIXED: Clear All Data actually clears everything
+    function clearAllData() {
+        if(confirm("Are you sure you want to delete everything?")) {
+            localStorage.clear();
+            gameData = Array(15).fill().map(() => ({ word: "", img: "" }));
+            document.getElementById('exp-input-box').value = "last night, yesterday, now, last week, last year";
+            document.getElementById('setting-exps').value = "last night, yesterday, now, last week, last year";
+            openSettings();
+        }
+    }
+
     function closeSettings() { 
-        document.getElementById('exp-input-box').value = document.getElementById('setting-exps').value;
-        saveLocal();
+        const newExps = document.getElementById('setting-exps').value;
+        document.getElementById('exp-input-box').value = newExps; 
+        saveLocal(); 
         document.getElementById('settings-overlay').style.display = 'none'; 
     }
 
     function pickExpression() {
-        if (unusedExps.length === 0) {
-            unusedExps = document.getElementById('exp-input-box').value.split(',').map(s => s.trim()).filter(s => s !== "");
-        }
+        if (unusedExps.length === 0) unusedExps = document.getElementById('exp-input-box').value.split(',').map(s => s.trim()).filter(s => s !== "");
         if(unusedExps.length === 0) return alert("Add expressions!");
-        const idx = Math.floor(Math.random() * unusedExps.length);
-        currentExp = unusedExps.splice(idx, 1)[0];
-        const p = document.getElementById('expression-popup');
-        p.innerText = currentExp.toUpperCase();
-        p.style.display = 'block';
-        playSfx('sfxRandomizer');
+        const idx = Math.floor(Math.random() * unusedExps.length); currentExp = unusedExps.splice(idx, 1)[0];
+        const p = document.getElementById('expression-popup'); p.innerText = currentExp.toUpperCase(); p.style.display = 'block'; playSfx('sfxRandomizer');
     }
 
     function renderCalendar() {
@@ -345,31 +426,26 @@
         const daysInMonth = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 0).getDate();
         for(let i=0; i<first; i++) grid.appendChild(document.createElement('div'));
         for(let d=1; d<=daysInMonth; d++) {
-            const dayDiv = document.createElement('div');
-            dayDiv.className = 'day';
+            const dayDiv = document.createElement('div'); dayDiv.className = 'day';
             const dateID = `${currentViewDate.getFullYear()}-${currentViewDate.getMonth()}-${d}`;
             if(selectedDates.includes(dateID)) dayDiv.classList.add('selected');
             dayDiv.innerHTML = `<span>${d}</span>`;
             dayDiv.onclick = () => {
-                playSfx('sfxClick');
+                if(isDrawingEnabled) return; playSfx('sfxClick');
                 if(selectedDates.includes(dateID)) selectedDates = selectedDates.filter(x => x !== dateID);
                 else selectedDates.push(dateID);
-                renderCalendar();
-                document.getElementById('ok-btn').style.display = selectedDates.length > 0 ? 'block' : 'none';
-            };
-            grid.appendChild(dayDiv);
+                renderCalendar(); document.getElementById('ok-btn').style.display = selectedDates.length > 0 ? 'block' : 'none';
+            }; grid.appendChild(dayDiv);
         }
     }
 
     function openBigScreen() {
-        const valid = gameData.filter(p => p.word !== "");
-        if(valid.length === 0) return alert("Add places!");
+        const valid = gameData.filter(p => p.word !== ""); if(valid.length === 0) return alert("Add places!");
         const place = valid[Math.floor(Math.random()*valid.length)];
-        document.body.classList.add('focus-active');
-        document.getElementById('focused-overlay').style.display = 'flex';
-        document.getElementById('submit-btn').style.display = 'block';
-        document.getElementById('back-btn').style.display = 'none';
-        const dObj = new Date(selectedDates[0].split('-')[0], selectedDates[0].split('-')[1], selectedDates[0].split('-')[2]);
+        document.body.classList.add('focus-active'); document.getElementById('focused-overlay').style.display = 'flex';
+        document.getElementById('submit-btn').style.display = 'block'; document.getElementById('back-btn').style.display = 'none';
+        const dParts = selectedDates[0].split('-');
+        const dObj = new Date(dParts[0], dParts[1], dParts[2]);
         document.getElementById('full-date-display').innerText = dObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         setupGame(place);
     }
@@ -377,152 +453,94 @@
     function setupGame(item) {
         document.getElementById('game-image').src = item.img || "";
         document.getElementById('game-place-name').innerText = item.word;
-
         const isNow = currentExp.toLowerCase() === "now";
         const isSpecific = item.word.charAt(0) === item.word.charAt(0).toUpperCase() && isNaN(item.word.charAt(0));
         const article = isSpecific ? "" : "the ";
-        
-        const q1Line = document.getElementById('q1-line');
-        q1Line.innerHTML = `Where <div class="drop-box" id="drop-v1" ondrop="drop(event)" ondragover="allowDrop(event)"></div> you <div class="drop-box" id="drop-exp1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>? <br> I <div class="drop-box" id="drop-v2" ondrop="drop(event)" ondragover="allowDrop(event)"></div> at ${article}<div class="drop-box" id="drop-place1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>.`;
-
-        const isCorrect = Math.random() > 0.5;
-        const otherPlaces = gameData.filter(p => p.word !== "" && p.word !== item.word);
+        document.getElementById('q1-line').innerHTML = `Where <div class="drop-box" id="drop-v1" ondrop="drop(event)" ondragover="allowDrop(event)"></div> you <div class="drop-box" id="drop-exp1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>? <br> I <div class="drop-box" id="drop-v2" ondrop="drop(event)" ondragover="allowDrop(event)"></div> at ${article}<div class="drop-box" id="drop-place1" ondrop="drop(event)" ondragover="allowDrop(event)"></div>.`;
+        const isCorrect = Math.random() > 0.5; const otherPlaces = gameData.filter(p => p.word !== "" && p.word !== item.word);
         const decoyPlace = otherPlaces.length > 0 ? otherPlaces[Math.floor(Math.random()*otherPlaces.length)].word : "bakery";
         const askWhere = isCorrect ? item.word : decoyPlace;
         const decoySpecific = askWhere.charAt(0) === askWhere.charAt(0).toUpperCase() && isNaN(askWhere.charAt(0));
         const decoyArticle = decoySpecific ? "" : "the ";
-
         let optionYes, optionNo, yesNoAns;
-
         if(isNow) {
-            optionYes = "Yes, I am.";
-            optionNo = `No, I'm not. I'm at ${article}${item.word}.`;
-            yesNoAns = isCorrect ? optionYes : optionNo;
+            optionYes = "Yes, I am."; optionNo = `No, I'm not. I'm at ${article}${item.word}.`; yesNoAns = isCorrect ? optionYes : optionNo;
             document.getElementById('q2-line').innerHTML = `Are you at ${decoyArticle}${askWhere} ${currentExp}? <div class="drop-box" id="drop-yn" style="width:450px" ondrop="drop(event)" ondragover="allowDrop(event)"></div>`;
             correctAnswers = { v1: "are", exp1: currentExp, v2: "am", place1: item.word, yn: yesNoAns };
         } else {
-            optionYes = "Yes, I was.";
-            optionNo = isCorrect ? `No, I wasn't. I was at ${decoyArticle}${decoyPlace}.` : `No, I wasn't. I was at ${article}${item.word}.`;
-            yesNoAns = isCorrect ? optionYes : optionNo;
+            optionYes = "Yes, I was."; optionNo = isCorrect ? `No, I wasn't. I was at ${decoyArticle}${decoyPlace}.` : `No, I wasn't. I was at ${article}${item.word}.`; yesNoAns = isCorrect ? optionYes : optionNo;
             document.getElementById('q2-line').innerHTML = `Were you at ${decoyArticle}${askWhere} ${currentExp}? <div class="drop-box" id="drop-yn" style="width:450px" ondrop="drop(event)" ondragover="allowDrop(event)"></div>`;
             correctAnswers = { v1: "were", exp1: currentExp, v2: "was", place1: item.word, yn: yesNoAns };
         }
-
         const words = isNow ? ["are", "am", "I'm not", "I'm"] : ["were", "was", "wasn't"];
-        words.push(currentExp, item.word, optionYes, optionNo, "at");
-        if(!isSpecific) words.push("the");
-
+        words.push(currentExp, item.word, optionYes, optionNo, "at"); if(!isSpecific) words.push("the");
         const bank = document.getElementById('word-bank'); bank.innerHTML = '';
         [...new Set(words)].sort(() => Math.random() - 0.5).forEach((w, i) => {
-            const span = document.createElement('span'); 
-            span.className = 'word-tile'; span.innerText = w; span.draggable = true; span.id = "w-" + i;
+            const span = document.createElement('span'); span.className = 'word-tile'; span.innerText = w; span.draggable = true; span.id = "w-" + i;
             span.ondragstart = (e) => e.dataTransfer.setData("text", e.target.id);
+            span.addEventListener('touchstart', handleTouchStart, {passive: false});
+            span.addEventListener('touchmove', handleTouchMove, {passive: false});
+            span.addEventListener('touchend', handleTouchEnd, {passive: false});
             bank.appendChild(span);
         });
     }
 
+    // Touch Word Drags
+    let touchDraggingElement = null, touchClone = null;
+    function handleTouchStart(e) { touchDraggingElement = e.target; touchClone = touchDraggingElement.cloneNode(true); touchClone.style.position = "fixed"; touchClone.style.zIndex = "1000"; touchClone.style.opacity = "0.8"; touchClone.style.pointerEvents = "none"; document.body.appendChild(touchClone); moveAt(e.touches[0].pageX, e.touches[0].pageY); }
+    function handleTouchMove(e) { if (!touchClone) return; e.preventDefault(); moveAt(e.touches[0].pageX, e.touches[0].pageY); }
+    function handleTouchEnd(e) { if (!touchClone) return; const touch = e.changedTouches[0]; document.body.removeChild(touchClone); const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY); const realTarget = dropTarget ? dropTarget.closest('.drop-box') : null;
+        if (realTarget) { realTarget.innerHTML = ""; const finalClone = touchDraggingElement.cloneNode(true); finalClone.style.cursor = "default"; finalClone.draggable = false; realTarget.appendChild(finalClone); realTarget.style.background = "rgba(74, 144, 226, 0.1)"; }
+        touchClone = null; touchDraggingElement = null;
+    }
+    function moveAt(pageX, pageY) { if (touchClone) { touchClone.style.left = pageX - touchClone.offsetWidth / 2 + 'px'; touchClone.style.top = pageY - touchClone.offsetHeight / 2 + 'px'; } }
+
     function checkAnswers() {
         const check = (id, key) => document.getElementById(id).innerText.trim() === correctAnswers[key];
         const isOk = check('drop-v1', 'v1') && check('drop-exp1', 'exp1') && check('drop-v2', 'v2') && check('drop-place1', 'place1') && check('drop-yn', 'yn');
-        const overlay = document.getElementById('result-overlay');
-        document.getElementById('result-gif').src = isOk ? 'correct.gif' : 'wrong.gif';
-        if(isOk) playSfx('sfxCorrect'); 
-        overlay.style.display = 'flex';
-        setTimeout(() => { 
-            overlay.style.display = 'none'; 
-            if(isOk) { document.getElementById('submit-btn').style.display = 'none'; document.getElementById('back-btn').style.display = 'block'; }
-        }, 2000);
+        const overlay = document.getElementById('result-overlay'); document.getElementById('result-gif').src = isOk ? 'correct.gif' : 'wrong.gif';
+        if(isOk) playSfx('sfxCorrect'); overlay.style.display = 'flex';
+        setTimeout(() => { overlay.style.display = 'none'; if(isOk) { document.getElementById('submit-btn').style.display = 'none'; document.getElementById('back-btn').style.display = 'block'; } }, 2000);
     }
-
     function allowDrop(ev) { ev.preventDefault(); }
-    function drop(ev) {
-        ev.preventDefault();
-        const data = ev.dataTransfer.getData("text");
-        const draggedElement = document.getElementById(data);
-        let target = ev.target;
-        if (target.classList.contains('word-tile')) target = target.parentElement; 
-        if (target.classList.contains('drop-box')) {
-            target.innerHTML = "";
-            const clone = draggedElement.cloneNode(true);
-            clone.id = "clone-" + Math.random();
-            clone.style.cursor = "default"; clone.draggable = false; 
-            target.appendChild(clone);
-            target.style.background = "rgba(74, 144, 226, 0.1)";
+    function drop(ev) { ev.preventDefault(); const data = ev.dataTransfer.getData("text"); const draggedElement = document.getElementById(data); let target = ev.target; if (target.classList.contains('word-tile')) target = target.parentElement; 
+        if (target.classList.contains('drop-box')) { target.innerHTML = ""; const clone = draggedElement.cloneNode(true); clone.id = "clone-" + Math.random(); clone.style.cursor = "default"; clone.draggable = false; target.appendChild(clone); target.style.background = "rgba(74, 144, 226, 0.1)"; }
+    }
+    function closeBigScreen() { document.body.classList.remove('focus-active'); document.getElementById('focused-overlay').style.display = 'none'; selectedDates = []; document.getElementById('ok-btn').style.display = 'none'; document.querySelectorAll('.drop-box').forEach(b => { b.innerHTML = ""; b.style.background = "transparent"; }); renderCalendar(); }
+
+    // UNIVERSAL WIDGET DRAG LOGIC
+    function makeWidgetDraggable(el) {
+        let active = false, currentX = 0, currentY = 0, initialX, initialY, xOffset = 0, yOffset = 0;
+        function dragStart(e) {
+            if (e.target.tagName === "TEXTAREA" || e.target.tagName === "BUTTON" || e.target.classList.contains('color-dot')) return;
+            initialX = (e.type === "touchstart" ? e.touches[0].clientX : e.clientX) - xOffset;
+            initialY = (e.type === "touchstart" ? e.touches[0].clientY : e.clientY) - yOffset;
+            active = true;
         }
-    }
-
-    function closeBigScreen() { 
-        document.body.classList.remove('focus-active'); 
-        document.getElementById('focused-overlay').style.display = 'none'; 
-        selectedDates = []; 
-        document.getElementById('ok-btn').style.display = 'none'; 
-        document.querySelectorAll('.drop-box').forEach(b => { b.innerHTML = ""; b.style.background = "transparent"; });
-        renderCalendar(); 
-    }
-
-    function saveToFile() { const blob = new Blob([JSON.stringify({places:gameData,exps:document.getElementById('setting-exps').value})], {type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="game_settings.json"; a.click(); }
-    function loadFromFile(e) { const reader = new FileReader(); reader.onload=(ev)=>{ const d=JSON.parse(ev.target.result); gameData=d.places; document.getElementById('setting-exps').value=d.exps; saveLocal(); openSettings(); }; reader.readAsText(e.target.files[0]); }
-    
-    // --- UPDATED DRAGGABLE LOGIC FOR MOUSE AND TOUCH ---
-    const dragBox = document.getElementById("draggable-randomizer");
-    let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
-
-    function dragStart(e) {
-        // Only allow dragging if clicking the box, not the text area or buttons
-        if (e.target.tagName === "TEXTAREA" || e.target.tagName === "BUTTON") return;
-        
-        if (e.type === "touchstart") {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-        } else {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-        }
-        active = true;
-    }
-
-    function dragEnd() {
-        initialX = currentX;
-        initialY = currentY;
-        active = false;
-    }
-
-    function dragging(e) {
-        if (active) {
-            e.preventDefault();
-            if (e.type === "touchmove") {
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
-            } else {
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
+        function dragging(e) {
+            if (active) {
+                e.preventDefault();
+                currentX = (e.type === "touchmove" ? e.touches[0].clientX : e.clientX) - initialX;
+                currentY = (e.type === "touchmove" ? e.touches[0].clientY : e.clientY) - initialY;
+                xOffset = currentX; yOffset = currentY;
+                el.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
             }
-            xOffset = currentX;
-            yOffset = currentY;
-            dragBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         }
+        el.addEventListener("mousedown", dragStart); el.addEventListener("touchstart", dragStart, {passive: false});
+        document.addEventListener("mousemove", dragging); document.addEventListener("touchmove", dragging, {passive: false});
+        document.addEventListener("mouseup", () => active = false); document.addEventListener("touchend", () => active = false);
     }
 
-    // Mouse Listeners
-    dragBox.addEventListener("mousedown", dragStart);
-    document.addEventListener("mousemove", dragging);
-    document.addEventListener("mouseup", dragEnd);
-
-    // Touch Listeners (Smart TV/Tablets)
-    dragBox.addEventListener("touchstart", dragStart, {passive: false});
-    document.addEventListener("touchmove", dragging, {passive: false});
-    document.addEventListener("touchend", dragEnd);
-
-    function toggleMusic() { 
-        const m = document.getElementById('bgMusic'); 
-        const btn = document.querySelector('.music-ctrl .nav-btn'); 
-        if(m.paused) { m.play(); btn.innerText = "MUSIC: ON"; } 
-        else { m.pause(); btn.innerText = "MUSIC: OFF"; } 
-    }
+    function toggleMusic() { const m = document.getElementById('bgMusic'); const btn = document.querySelector('.music-ctrl .nav-btn'); if(m.paused) { m.play(); btn.innerText = "MUSIC: ON"; } else { m.pause(); btn.innerText = "MUSIC: OFF"; } }
     function setVolume(v) { document.getElementById('bgMusic').volume = v; }
     function changeMonth(d) { currentViewDate.setMonth(currentViewDate.getMonth() + d); renderCalendar(); }
     function changeYear(d) { currentViewDate.setFullYear(currentViewDate.getFullYear() + d); renderCalendar(); }
-    window.onload = renderCalendar;
+
+    window.onload = () => { 
+        renderCalendar(); resizeCanvas();
+        makeWidgetDraggable(document.getElementById("draggable-randomizer"));
+        makeWidgetDraggable(document.getElementById("pen-widget"));
+    };
 </script>
 </body>
 </html>
