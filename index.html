@@ -203,7 +203,7 @@
 
 <div id="draggable-randomizer" class="draggable-widget">
     <div class="widget-handle">MOVE RANDOMIZER</div>
-    <textarea id="exp-input-box" style="width:100%; height:60px;">last night, yesterday, now, last week, last year</textarea>
+    <textarea id="exp-input-box" style="width:100%; height:60px;">two days ago, yesterday, last night, two hours ago, an hour ago, thirty minutes ago, last week, last month, last year, this morning, last Monday</textarea>
     <button class="nav-btn" style="width:100%; margin-top:5px;" onclick="pickExpression()">PICK EXPRESSION</button>
 </div>
 
@@ -326,6 +326,9 @@
     if(localStorage.getItem('calGameExps')) {
         document.getElementById('exp-input-box').value = localStorage.getItem('calGameExps');
         document.getElementById('setting-exps').value = localStorage.getItem('calGameExps');
+    } else {
+        // Fallback to default if no local storage
+        document.getElementById('setting-exps').value = document.getElementById('exp-input-box').value;
     }
 
     function playSfx(id) { const s = document.getElementById(id); if(s) { s.currentTime = 0; s.play(); } }
@@ -366,7 +369,6 @@
         unusedExps = []; 
     }
 
-    // FIXED: Save/Load including Time Expressions
     function saveToFile() { 
         const blob = new Blob([JSON.stringify({
             places: gameData, 
@@ -389,13 +391,13 @@
         }; reader.readAsText(e.target.files[0]); 
     }
 
-    // FIXED: Clear All Data actually clears everything
     function clearAllData() {
         if(confirm("Are you sure you want to delete everything?")) {
             localStorage.clear();
             gameData = Array(15).fill().map(() => ({ word: "", img: "" }));
-            document.getElementById('exp-input-box').value = "last night, yesterday, now, last week, last year";
-            document.getElementById('setting-exps').value = "last night, yesterday, now, last week, last year";
+            const defaultExps = "two days ago, yesterday, last night, two hours ago, an hour ago, thirty minutes ago, last week, last month, last year, this morning, last Monday";
+            document.getElementById('exp-input-box').value = defaultExps;
+            document.getElementById('setting-exps').value = defaultExps;
             openSettings();
         }
     }
