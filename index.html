@@ -101,6 +101,7 @@
             background: white; padding: 15px; border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.4); z-index: 60;
             width: 280px; border: 3px solid var(--dark); cursor: move;
+            touch-action: none; /* Prevents screen shaking/scrolling on mobile while dragging */
         }
 
         #settings-overlay {
@@ -249,7 +250,6 @@
         document.querySelector('.music-ctrl .nav-btn').innerText = "MUSIC: ON";
     }
 
-    // Previous scripts remain identical...
     for(let i=1; i<=12; i++) document.getElementById('h-sel').add(new Option(i, i));
     for(let i=0; i<60; i++) document.getElementById('m-sel').add(new Option(i.toString().padStart(2,'0'), i));
 
@@ -463,11 +463,55 @@
     function saveToFile() { const blob = new Blob([JSON.stringify({places:gameData,exps:document.getElementById('setting-exps').value})], {type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="game_settings.json"; a.click(); }
     function loadFromFile(e) { const reader = new FileReader(); reader.onload=(ev)=>{ const d=JSON.parse(ev.target.result); gameData=d.places; document.getElementById('setting-exps').value=d.exps; saveLocal(); openSettings(); }; reader.readAsText(e.target.files[0]); }
     
-    const drag = document.getElementById("draggable-randomizer");
+    // --- UPDATED DRAGGABLE LOGIC FOR MOUSE AND TOUCH ---
+    const dragBox = document.getElementById("draggable-randomizer");
     let active = false, currentX, currentY, initialX, initialY, xOffset = 0, yOffset = 0;
-    drag.addEventListener("mousedown", (e) => { if(e.target.tagName !== "TEXTAREA" && e.target.tagName !== "BUTTON") { active = true; initialX = e.clientX - xOffset; initialY = e.clientY - yOffset; } });
-    document.addEventListener("mousemove", (e) => { if (active) { currentX = e.clientX - initialX; currentY = e.clientY - initialY; xOffset = currentX; yOffset = currentY; drag.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`; } });
-    document.addEventListener("mouseup", () => active = false);
+
+    function dragStart(e) {
+        // Only allow dragging if clicking the box, not the text area or buttons
+        if (e.target.tagName === "TEXTAREA" || e.target.tagName === "BUTTON") return;
+        
+        if (e.type === "touchstart") {
+            initialX = e.touches[0].clientX - xOffset;
+            initialY = e.touches[0].clientY - yOffset;
+        } else {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+        }
+        active = true;
+    }
+
+    function dragEnd() {
+        initialX = currentX;
+        initialY = currentY;
+        active = false;
+    }
+
+    function dragging(e) {
+        if (active) {
+            e.preventDefault();
+            if (e.type === "touchmove") {
+                currentX = e.touches[0].clientX - initialX;
+                currentY = e.touches[0].clientY - initialY;
+            } else {
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+            }
+            xOffset = currentX;
+            yOffset = currentY;
+            dragBox.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+        }
+    }
+
+    // Mouse Listeners
+    dragBox.addEventListener("mousedown", dragStart);
+    document.addEventListener("mousemove", dragging);
+    document.addEventListener("mouseup", dragEnd);
+
+    // Touch Listeners (Smart TV/Tablets)
+    dragBox.addEventListener("touchstart", dragStart, {passive: false});
+    document.addEventListener("touchmove", dragging, {passive: false});
+    document.addEventListener("touchend", dragEnd);
 
     function toggleMusic() { 
         const m = document.getElementById('bgMusic'); 
